@@ -1,0 +1,13 @@
+.idea/
+.vscode/
+target/
+build/
+.gradle/
+*.iml
+
+__pycache__/
+.pytest_cache/
+.venv/
+.env
+
+.DS_Store
