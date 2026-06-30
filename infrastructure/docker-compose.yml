@@ -13,6 +13,11 @@ services:
       - ./postgres/init:/docker-entrypoint-initdb.d
     networks:
       - aidflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aidflow -d aidflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redpanda:
     image: redpandadata/redpanda:latest
@@ -39,6 +44,11 @@ services:
       - "9644:9644"
     networks:
       - aidflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health --brokers redpanda:9092 | grep -q 'Healthy:.*true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -50,6 +60,55 @@ services:
       - "8085:8080"
     depends_on:
       - redpanda
+    networks:
+      - aidflow-network
+
+  identity-service:
+    build:
+      context: ../services/identity-service
+    container_name: aidflow-identity-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/identity_service
+      SPRING_DATASOURCE_USERNAME: aidflow
+      SPRING_DATASOURCE_PASSWORD: aidflow
+      AUTH_JWT_SECRET: local-compose-secret-local-compose-secret-identity
+      AUTH_JWT_EXPIRATION_SECONDS: 900
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - aidflow-network
+
+  campaign-service:
+    build:
+      context: ../services/campaign-service
+    container_name: aidflow-campaign-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/campaign_service
+      SPRING_DATASOURCE_USERNAME: aidflow
+      SPRING_DATASOURCE_PASSWORD: aidflow
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    networks:
+      - aidflow-network
+
+  gateway-service:
+    build:
+      context: ../services/gateway-service
+    container_name: aidflow-gateway-service
+    environment:
+      IDENTITY_SERVICE_BASE_URL: http://identity-service:8081
+      SPRING_CLOUD_GATEWAY_ROUTES_0_URI: http://identity-service:8081
+      SPRING_CLOUD_GATEWAY_ROUTES_1_URI: http://campaign-service:8082
+    ports:
+      - "8080:8080"
+    depends_on:
+      - identity-service
+      - campaign-service
     networks:
       - aidflow-network
 
