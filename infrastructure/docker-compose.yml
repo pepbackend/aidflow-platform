@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aidflow-postgres
+    environment:
+      POSTGRES_USER: aidflow
+      POSTGRES_PASSWORD: aidflow
+      POSTGRES_DB: aidflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - aidflow-postgres-data:/var/lib/postgresql/data
+    networks:
+      - aidflow-network
+
+  redpanda:
+    image: redpandadata/redpanda:latest
+    container_name: aidflow-redpanda
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp
+      - "1"
+      - --memory
+      - 512M
+      - --reserve-memory
+      - 0M
+      - --node-id
+      - "0"
+      - --check=false
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:9092
+    ports:
+      - "9092:9092"
+      - "9644:9644"
+    networks:
+      - aidflow-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: aidflow-kafka-ui
+    environment:
+      KAFKA_CLUSTERS_0_NAME: aidflow-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: redpanda:9092
+    ports:
+      - "8085:8080"
+    depends_on:
+      - redpanda
+    networks:
+      - aidflow-network
+
+volumes:
+  aidflow-postgres-data:
+
+networks:
+  aidflow-network:
+    name: aidflow-network
