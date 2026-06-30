@@ -6,13 +6,18 @@ import com.aidflow.identity.domain.errors.InvalidTokenException
 import com.aidflow.identity.domain.errors.UserNotFoundException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 
 @RestControllerAdvice
 class HttpExceptionHandler {
-    @ExceptionHandler(IllegalArgumentException::class, MethodArgumentNotValidException::class)
+    @ExceptionHandler(
+        IllegalArgumentException::class,
+        MethodArgumentNotValidException::class,
+        HttpMessageNotReadableException::class,
+    )
     fun badRequest(exception: Exception): ResponseEntity<ErrorResponse> {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(ErrorResponse(error = "bad_request", message = exception.message ?: "Bad request"))

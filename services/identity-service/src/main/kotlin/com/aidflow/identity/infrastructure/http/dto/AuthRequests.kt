@@ -1,7 +1,9 @@
 package com.aidflow.identity.infrastructure.http.dto
 
+import com.aidflow.identity.domain.model.Role
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
 
 data class RegisterRequest(
@@ -12,6 +14,9 @@ data class RegisterRequest(
     @field:NotBlank
     @field:Size(min = 8)
     val password: String,
+
+    @field:NotNull
+    val role: Role,
 )
 
 data class LoginRequest(

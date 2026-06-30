@@ -32,7 +32,7 @@ class JpaUserRepositoryAdapterTest : PostgresTest() {
             id = id,
             email = email,
             passwordHash = "hash",
-            roles = setOf(Role.USER),
+            roles = setOf(Role.VOLUNTEER),
             createdAt = Instant.parse("2026-06-29T10:00:00Z"),
         )
 
@@ -44,7 +44,7 @@ class JpaUserRepositoryAdapterTest : PostgresTest() {
         assertNotNull(byEmail)
         assertNotNull(byId)
         assertEquals(user.id, byEmail?.id)
-        assertEquals(setOf(Role.USER), byEmail?.roles)
+        assertEquals(setOf(Role.VOLUNTEER), byEmail?.roles)
         assertTrue(userRepository.existsByEmail(email))
         assertFalse(userRepository.existsByEmail(Email.of("missing@example.com")))
     }

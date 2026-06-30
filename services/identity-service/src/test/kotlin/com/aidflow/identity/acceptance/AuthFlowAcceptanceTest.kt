@@ -34,13 +34,13 @@ class AuthFlowAcceptanceTest : PostgresTest() {
 
         val registerResponse = postJson(
             "/auth/register",
-            mapOf("email" to email, "password" to "secret123"),
+            mapOf("email" to email, "password" to "secret123", "role" to "COORDINATOR"),
         )
 
         val registeredToken = registerResponse["accessToken"].asText()
         assertNotNull(registeredToken)
         assertEquals(email, registerResponse["user"]["email"].asText())
-        assertEquals("USER", registerResponse["user"]["roles"][0].asText())
+        assertEquals("COORDINATOR", registerResponse["user"]["roles"][0].asText())
 
         val loginResponse = postJson(
             "/auth/login",
@@ -62,7 +62,7 @@ class AuthFlowAcceptanceTest : PostgresTest() {
 
         assertEquals(registerResponse["user"]["id"].asText(), meResponse["id"].asText())
         assertEquals(email, meResponse["email"].asText())
-        assertEquals("USER", meResponse["roles"][0].asText())
+        assertEquals("COORDINATOR", meResponse["roles"][0].asText())
     }
 
     private fun postJson(path: String, body: Map<String, String>): JsonNode {

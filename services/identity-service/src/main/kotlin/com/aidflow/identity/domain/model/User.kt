@@ -17,6 +17,7 @@ data class User(
             id: UUID,
             email: Email,
             passwordHash: String,
+            role: Role,
             createdAt: Instant,
         ): User {
             require(passwordHash.isNotBlank()) { "Password hash must not be blank" }
@@ -25,7 +26,7 @@ data class User(
                 id = id,
                 email = email,
                 passwordHash = passwordHash,
-                roles = setOf(Role.USER),
+                roles = setOf(role),
                 createdAt = createdAt,
             )
         }

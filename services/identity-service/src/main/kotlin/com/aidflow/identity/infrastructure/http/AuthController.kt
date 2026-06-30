@@ -17,7 +17,7 @@ class AuthController(
 ) {
     @PostMapping("/auth/register")
     fun register(@Valid @RequestBody request: RegisterRequest): AuthResponse {
-        return AuthResponse.from(registerUserUseCase.execute(request.email, request.password))
+        return AuthResponse.from(registerUserUseCase.execute(request.email, request.password, request.role))
     }
 
     @PostMapping("/auth/login")
