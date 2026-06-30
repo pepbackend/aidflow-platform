@@ -8,22 +8,30 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CreateCampaignUseCase {
     private final CampaignRepository campaignRepository;
+    private final CampaignEventRecorder campaignEventRecorder;
     private final Clock clock;
 
     @Autowired
-    public CreateCampaignUseCase(CampaignRepository campaignRepository) {
-        this(campaignRepository, Clock.systemUTC());
+    public CreateCampaignUseCase(CampaignRepository campaignRepository, CampaignEventRecorder campaignEventRecorder) {
+        this(campaignRepository, campaignEventRecorder, Clock.systemUTC());
     }
 
-    public CreateCampaignUseCase(CampaignRepository campaignRepository, Clock clock) {
+    public CreateCampaignUseCase(
+            CampaignRepository campaignRepository,
+            CampaignEventRecorder campaignEventRecorder,
+            Clock clock
+    ) {
         this.campaignRepository = campaignRepository;
+        this.campaignEventRecorder = campaignEventRecorder;
         this.clock = clock;
     }
 
+    @Transactional
     public Campaign execute(CreateCampaignCommand command) {
         if (!command.user().hasAnyRole("COORDINATOR", "ADMIN")) {
             throw new ForbiddenCampaignOperationException();
@@ -42,6 +50,8 @@ public class CreateCampaignUseCase {
                 now
         );
 
-        return campaignRepository.save(campaign);
+        Campaign savedCampaign = campaignRepository.save(campaign);
+        campaignEventRecorder.recordCampaignCreated(savedCampaign);
+        return savedCampaign;
     }
 }

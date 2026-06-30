@@ -21,9 +21,10 @@ class CreateCampaignUseCaseTest {
     private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-06-30T10:15:30Z"), ZoneOffset.UTC);
 
     @Test
-    void createsCampaignAsActive() {
+    void createsCampaignAsActiveAndRecordsCampaignCreatedEvent() {
         InMemoryCampaignRepository repository = new InMemoryCampaignRepository();
-        CreateCampaignUseCase useCase = new CreateCampaignUseCase(repository, FIXED_CLOCK);
+        RecordingCampaignEventRecorder eventRecorder = new RecordingCampaignEventRecorder();
+        CreateCampaignUseCase useCase = new CreateCampaignUseCase(repository, eventRecorder, FIXED_CLOCK);
         UUID userId = UUID.randomUUID();
 
         Campaign campaign = useCase.execute(new CreateCampaignCommand(
@@ -40,12 +41,14 @@ class CreateCampaignUseCaseTest {
         assertThat(campaign.createdAt()).isEqualTo(Instant.parse("2026-06-30T10:15:30Z").atOffset(ZoneOffset.UTC));
         assertThat(campaign.updatedAt()).isEqualTo(campaign.createdAt());
         assertThat(repository.saved).containsExactly(campaign);
+        assertThat(eventRecorder.campaignsCreated).containsExactly(campaign);
     }
 
     @Test
     void rejectsUsersWithoutCoordinatorOrAdminRole() {
         InMemoryCampaignRepository repository = new InMemoryCampaignRepository();
-        CreateCampaignUseCase useCase = new CreateCampaignUseCase(repository, FIXED_CLOCK);
+        RecordingCampaignEventRecorder eventRecorder = new RecordingCampaignEventRecorder();
+        CreateCampaignUseCase useCase = new CreateCampaignUseCase(repository, eventRecorder, FIXED_CLOCK);
 
         CreateCampaignCommand command = new CreateCampaignCommand(
                 "Flood response in Granollers",
@@ -58,6 +61,16 @@ class CreateCampaignUseCaseTest {
         assertThatThrownBy(() -> useCase.execute(command))
                 .isInstanceOf(ForbiddenCampaignOperationException.class);
         assertThat(repository.saved).isEmpty();
+        assertThat(eventRecorder.campaignsCreated).isEmpty();
+    }
+
+    private static class RecordingCampaignEventRecorder implements CampaignEventRecorder {
+        private final List<Campaign> campaignsCreated = new ArrayList<>();
+
+        @Override
+        public void recordCampaignCreated(Campaign campaign) {
+            campaignsCreated.add(campaign);
+        }
     }
 
     private static class InMemoryCampaignRepository implements CampaignRepository {
