@@ -45,7 +45,7 @@ services:
     networks:
       - aidflow-network
     healthcheck:
-      test: ["CMD-SHELL", "rpk cluster health --brokers redpanda:9092 | grep -q 'Healthy:.*true'"]
+      test: ["CMD", "rpk", "cluster", "health", "--exit-when-healthy"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -78,6 +78,12 @@ services:
         condition: service_healthy
     networks:
       - aidflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "bash -lc '</dev/tcp/localhost/8081'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
 
   campaign-service:
     build:
@@ -95,6 +101,12 @@ services:
         condition: service_healthy
     networks:
       - aidflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "bash -lc '</dev/tcp/localhost/8082'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
 
   gateway-service:
     build:
@@ -102,13 +114,14 @@ services:
     container_name: aidflow-gateway-service
     environment:
       IDENTITY_SERVICE_BASE_URL: http://identity-service:8081
-      SPRING_CLOUD_GATEWAY_ROUTES_0_URI: http://identity-service:8081
-      SPRING_CLOUD_GATEWAY_ROUTES_1_URI: http://campaign-service:8082
+      CAMPAIGN_SERVICE_BASE_URL: http://campaign-service:8082
     ports:
       - "8080:8080"
     depends_on:
-      - identity-service
-      - campaign-service
+      identity-service:
+        condition: service_healthy
+      campaign-service:
+        condition: service_healthy
     networks:
       - aidflow-network
 

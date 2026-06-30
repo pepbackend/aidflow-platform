@@ -1,4 +1,6 @@
 .gradle
-build
+build/*
+!build/libs
+!build/libs/*.jar
 bin
 Dockerfile
