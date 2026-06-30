@@ -41,7 +41,7 @@ class AuthenticationGatewayFilterTest {
                 WebClient.builder().exchangeFunction(request -> Mono.just(ClientResponse.create(HttpStatus.OK)
                         .header(HttpHeaders.CONTENT_TYPE, "application/json")
                         .body("""
-                                {"id":"%s","email":"user@example.com","roles":["ADMIN","USER"]}
+                                {"id":"%s","email":"user@example.com","roles":["ADMIN","VOLUNTEER"]}
                                 """.formatted(userId))
                         .build())),
                 "http://identity"
@@ -58,7 +58,7 @@ class AuthenticationGatewayFilterTest {
         assertThat(chain.called).isTrue();
         assertThat(chain.exchange.getRequest().getHeaders().getFirst("X-User-Id")).isEqualTo(userId.toString());
         assertThat(chain.exchange.getRequest().getHeaders().getFirst("X-User-Email")).isEqualTo("user@example.com");
-        assertThat(chain.exchange.getRequest().getHeaders().getFirst("X-User-Roles")).isEqualTo("ADMIN,USER");
+        assertThat(chain.exchange.getRequest().getHeaders().getFirst("X-User-Roles")).isEqualTo("ADMIN,VOLUNTEER");
     }
 
     @Test
