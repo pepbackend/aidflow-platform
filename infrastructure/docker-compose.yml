@@ -94,6 +94,7 @@ services:
       SPRING_DATASOURCE_USERNAME: aidflow
       SPRING_DATASOURCE_PASSWORD: aidflow
       SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      CAMPAIGN_EVENTS_CAMPAIGN_CREATED_TOPIC: aidflow.events
     depends_on:
       postgres:
         condition: service_healthy
@@ -107,6 +108,29 @@ services:
       timeout: 5s
       retries: 30
       start_period: 30s
+
+  notification-service:
+    build:
+      context: ../services/notification-service
+    container_name: aidflow-notification-service
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      KAFKA_TOPIC: aidflow.events
+      KAFKA_CONSUMER_GROUP: aidflow-notifications
+      KAFKA_DLQ_TOPIC: aidflow.events.dlq
+    ports:
+      - "8090:8090"
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    networks:
+      - aidflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8090/health')\""]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
 
   gateway-service:
     build:
