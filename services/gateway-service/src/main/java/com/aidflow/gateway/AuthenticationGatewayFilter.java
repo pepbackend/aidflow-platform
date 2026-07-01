@@ -43,6 +43,13 @@ public class AuthenticationGatewayFilter implements GlobalFilter, Ordered {
         return webClient.get()
                 .uri("/internal/auth/me")
                 .header(HttpHeaders.AUTHORIZATION, authorization)
+                .headers(headers -> {
+                    String traceId = exchange.getRequest().getHeaders()
+                            .getFirst(TraceIdGatewayFilter.TRACE_ID_HEADER);
+                    if (StringUtils.hasText(traceId)) {
+                        headers.set(TraceIdGatewayFilter.TRACE_ID_HEADER, traceId);
+                    }
+                })
                 .exchangeToMono(response -> {
                     if (response.statusCode().is2xxSuccessful()) {
                         return response.bodyToMono(CurrentUserResponse.class);
