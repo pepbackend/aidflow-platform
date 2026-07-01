@@ -9,27 +9,40 @@ import java.util.UUID;
 public record CampaignCreatedEvent(
         UUID eventId,
         String eventType,
-        UUID campaignId,
-        String name,
-        String description,
-        String location,
-        CampaignPriority priority,
-        CampaignStatus status,
-        UUID createdBy,
-        OffsetDateTime createdAt
+        UUID aggregateId,
+        String aggregateType,
+        OffsetDateTime occurredAt,
+        int version,
+        Payload payload
 ) {
     public static CampaignCreatedEvent from(Campaign campaign) {
         return new CampaignCreatedEvent(
                 UUID.randomUUID(),
                 "CampaignCreated",
                 campaign.id(),
-                campaign.name(),
-                campaign.description(),
-                campaign.location(),
-                campaign.priority(),
-                campaign.status(),
-                campaign.createdBy(),
-                campaign.createdAt()
+                "Campaign",
+                campaign.createdAt(),
+                1,
+                new Payload(
+                        campaign.id(),
+                        campaign.name(),
+                        campaign.description(),
+                        campaign.location(),
+                        campaign.priority(),
+                        campaign.status(),
+                        campaign.createdBy()
+                )
         );
+    }
+
+    public record Payload(
+            UUID campaignId,
+            String name,
+            String description,
+            String location,
+            CampaignPriority priority,
+            CampaignStatus status,
+            UUID createdBy
+    ) {
     }
 }

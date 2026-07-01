@@ -78,16 +78,19 @@ class CreateCampaignAcceptanceTest {
         assertThat(outboxEvent.get("aggregate_type")).isEqualTo("Campaign");
         assertThat(outboxEvent.get("aggregate_id")).isEqualTo(campaignId);
         assertThat(outboxEvent.get("event_type")).isEqualTo("CampaignCreated");
-        assertThat(outboxEvent.get("topic")).isEqualTo("campaign-created");
+        assertThat(outboxEvent.get("topic")).isEqualTo("aidflow.events");
         assertThat(outboxEvent.get("status")).isEqualTo("PENDING");
 
         JsonNode payload = objectMapper.readTree(outboxEvent.get("payload").toString());
         assertThat(payload.get("eventType").asText()).isEqualTo("CampaignCreated");
-        assertThat(payload.get("campaignId").asText()).isEqualTo(campaignId.toString());
-        assertThat(payload.get("name").asText()).isEqualTo("Flood response in Granollers");
-        assertThat(payload.get("priority").asText()).isEqualTo("HIGH");
-        assertThat(payload.get("status").asText()).isEqualTo("ACTIVE");
-        assertThat(payload.get("createdBy").asText()).isEqualTo(userId.toString());
+        assertThat(payload.get("aggregateId").asText()).isEqualTo(campaignId.toString());
+        assertThat(payload.get("aggregateType").asText()).isEqualTo("Campaign");
+        assertThat(payload.get("version").asInt()).isEqualTo(1);
+        assertThat(payload.get("payload").get("campaignId").asText()).isEqualTo(campaignId.toString());
+        assertThat(payload.get("payload").get("name").asText()).isEqualTo("Flood response in Granollers");
+        assertThat(payload.get("payload").get("priority").asText()).isEqualTo("HIGH");
+        assertThat(payload.get("payload").get("status").asText()).isEqualTo("ACTIVE");
+        assertThat(payload.get("payload").get("createdBy").asText()).isEqualTo(userId.toString());
     }
 
     @Test

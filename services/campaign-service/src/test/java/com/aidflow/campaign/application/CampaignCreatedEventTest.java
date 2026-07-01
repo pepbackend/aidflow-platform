@@ -32,13 +32,16 @@ class CampaignCreatedEventTest {
 
         assertThat(event.eventId()).isNotNull();
         assertThat(event.eventType()).isEqualTo("CampaignCreated");
-        assertThat(event.campaignId()).isEqualTo(campaignId);
-        assertThat(event.name()).isEqualTo("Flood response in Granollers");
-        assertThat(event.description()).isEqualTo("Volunteer coordination after heavy rain flooding");
-        assertThat(event.location()).isEqualTo("Granollers");
-        assertThat(event.priority()).isEqualTo(CampaignPriority.HIGH);
-        assertThat(event.status()).isEqualTo(CampaignStatus.ACTIVE);
-        assertThat(event.createdBy()).isEqualTo(createdBy);
-        assertThat(event.createdAt()).isEqualTo(createdAt);
+        assertThat(event.aggregateId()).isEqualTo(campaignId);
+        assertThat(event.aggregateType()).isEqualTo("Campaign");
+        assertThat(event.occurredAt()).isEqualTo(createdAt);
+        assertThat(event.version()).isEqualTo(1);
+        assertThat(event.payload().campaignId()).isEqualTo(campaignId);
+        assertThat(event.payload().name()).isEqualTo("Flood response in Granollers");
+        assertThat(event.payload().description()).isEqualTo("Volunteer coordination after heavy rain flooding");
+        assertThat(event.payload().location()).isEqualTo("Granollers");
+        assertThat(event.payload().priority()).isEqualTo(CampaignPriority.HIGH);
+        assertThat(event.payload().status()).isEqualTo(CampaignStatus.ACTIVE);
+        assertThat(event.payload().createdBy()).isEqualTo(createdBy);
     }
 }
