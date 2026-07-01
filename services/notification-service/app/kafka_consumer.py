@@ -51,17 +51,30 @@ class KafkaEventConsumer:
                 )
                 await self._consumer.start()
                 logger.info(
-                    "Consuming Kafka topic %s with group %s",
-                    self._settings.kafka_topic,
-                    self._settings.kafka_consumer_group,
+                    "Kafka consumer started",
+                    extra={
+                        "topic": self._settings.kafka_topic,
+                        "consumerGroup": self._settings.kafka_consumer_group,
+                    },
                 )
 
                 async for message in self._consumer:
-                    await self.process_message(message.value)
+                    await self.process_message(
+                        message.value,
+                        topic=message.topic,
+                        partition=message.partition,
+                        offset=message.offset,
+                    )
             except asyncio.CancelledError:
                 raise
             except Exception:
-                logger.exception("Kafka consumer loop failed; retrying shortly")
+                logger.exception(
+                    "Kafka consumer loop failed; retrying shortly",
+                    extra={
+                        "topic": self._settings.kafka_topic,
+                        "consumerGroup": self._settings.kafka_consumer_group,
+                    },
+                )
                 await asyncio.sleep(5)
             finally:
                 if self._consumer is not None:
@@ -69,18 +82,46 @@ class KafkaEventConsumer:
                     self._consumer = None
                 await self._dlq_publisher.stop()
 
-    async def process_message(self, value: bytes | None) -> None:
+    async def process_message(
+        self,
+        value: bytes | None,
+        *,
+        topic: str | None = None,
+        partition: int | None = None,
+        offset: int | None = None,
+    ) -> None:
+        log_context = {
+            "topic": topic,
+            "partition": partition,
+            "offset": offset,
+        }
         try:
             if value is None:
                 raise ValueError("Kafka message value is empty")
             raw_event = value.decode("utf-8")
             event = EventEnvelope.model_validate_json(raw_event)
+            logger.info(
+                "Kafka event received",
+                extra=log_context
+                | {
+                    "eventId": event.event_id,
+                    "eventType": event.event_type,
+                    "aggregateType": event.aggregate_type,
+                    "aggregateId": event.aggregate_id,
+                },
+            )
             self._event_handler.handle(event)
         except (ValidationError, ValueError, TypeError) as error:
-            logger.exception("Event validation failed; publishing to DLQ")
+            logger.exception(
+                "Event validation failed; publishing to DLQ",
+                extra=log_context | {"errorType": error.__class__.__name__},
+            )
             await self._publish_to_dlq(self._raw_event(value), error)
         except Exception as error:
-            logger.exception("Event handling failed; publishing to DLQ")
+            logger.exception(
+                "Event handling failed; publishing to DLQ",
+                extra=log_context | {"errorType": error.__class__.__name__},
+            )
             await self._publish_to_dlq(self._raw_event(value), error)
 
     async def _publish_to_dlq(self, raw_event: str, error: Exception) -> None:

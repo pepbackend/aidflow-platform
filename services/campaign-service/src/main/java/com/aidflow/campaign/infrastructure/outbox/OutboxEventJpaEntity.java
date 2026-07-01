@@ -95,6 +95,14 @@ public class OutboxEventJpaEntity {
         return aggregateId;
     }
 
+    public String getAggregateType() {
+        return aggregateType;
+    }
+
+    public String getEventType() {
+        return eventType;
+    }
+
     public String getTopic() {
         return topic;
     }

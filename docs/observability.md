@@ -91,7 +91,29 @@ Other useful service labels include:
 Filter logs by a request trace id:
 
 ```logql
-{job="docker"} |= "traceId=YOUR_TRACE_ID"
+{job="docker", service="campaign-service"} | json | traceId="YOUR_TRACE_ID"
+```
+
+Filter by logger/class:
+
+```logql
+{job="docker", service="campaign-service", logger="com.aidflow.campaign.infrastructure.http.CampaignController"}
+```
+
+Filter by severity:
+
+```logql
+{job="docker", service="campaign-service", severity="ERROR"}
+```
+
+Filter by structured event fields:
+
+```logql
+{job="docker", service="campaign-service"} | json | eventType="CampaignCreated"
+```
+
+```logql
+{job="docker", service="campaign-service"} | json | aggregateId="YOUR_AGGREGATE_ID"
 ```
 
 To inspect logs in Grafana:

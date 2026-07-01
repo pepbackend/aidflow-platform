@@ -44,6 +44,10 @@ class DlqPublisher:
             dead_letter.model_dump_json(by_alias=True).encode("utf-8"),
         )
         logger.info(
-            "Published failed event to DLQ topic %s",
-            self._settings.kafka_dlq_topic,
+            "Published failed event to DLQ",
+            extra={
+                "topic": self._settings.kafka_dlq_topic,
+                "consumerGroup": self._settings.kafka_consumer_group,
+                "errorType": error.__class__.__name__,
+            },
         )

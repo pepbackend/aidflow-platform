@@ -29,3 +29,21 @@ scrape_configs:
         target_label: stream
     pipeline_stages:
       - docker: {}
+      - match:
+          selector: '{service=~"(gateway-service|identity-service|campaign-service|notification-service)"}'
+          stages:
+            - json:
+                expressions:
+                  timestamp: timestamp
+                  severity: severity
+                  traceId: traceId
+                  logger: logger
+                  message: message
+            - labels:
+                severity:
+                logger:
+            - timestamp:
+                source: timestamp
+                format: RFC3339Nano
+            - output:
+                source: message
