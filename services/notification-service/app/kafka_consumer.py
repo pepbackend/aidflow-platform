@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from app.config import Settings
 from app.dlq_publisher import DlqPublisher
 from app.event_handler import EventHandler
+from app.metrics import KAFKA_EVENTS_FAILED, KAFKA_EVENTS_RECEIVED
 from app.models import EventEnvelope
 
 logger = logging.getLogger(__name__)
@@ -100,6 +101,10 @@ class KafkaEventConsumer:
                 raise ValueError("Kafka message value is empty")
             raw_event = value.decode("utf-8")
             event = EventEnvelope.model_validate_json(raw_event)
+            KAFKA_EVENTS_RECEIVED.labels(
+                event_type=event.event_type,
+                aggregate_type=event.aggregate_type,
+            ).inc()
             logger.info(
                 "Kafka event received",
                 extra=log_context
@@ -116,12 +121,14 @@ class KafkaEventConsumer:
                 "Event validation failed; publishing to DLQ",
                 extra=log_context | {"errorType": error.__class__.__name__},
             )
+            KAFKA_EVENTS_FAILED.labels(reason="validation").inc()
             await self._publish_to_dlq(self._raw_event(value), error)
         except Exception as error:
             logger.exception(
                 "Event handling failed; publishing to DLQ",
                 extra=log_context | {"errorType": error.__class__.__name__},
             )
+            KAFKA_EVENTS_FAILED.labels(reason="handling").inc()
             await self._publish_to_dlq(self._raw_event(value), error)
 
     async def _publish_to_dlq(self, raw_event: str, error: Exception) -> None:

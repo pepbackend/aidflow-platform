@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from aiokafka import AIOKafkaProducer
 
 from app.config import Settings
+from app.metrics import DLQ_EVENTS_PUBLISHED
 from app.models import DeadLetterEvent
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ class DlqPublisher:
             self._settings.kafka_dlq_topic,
             dead_letter.model_dump_json(by_alias=True).encode("utf-8"),
         )
+        DLQ_EVENTS_PUBLISHED.labels(error_type=error.__class__.__name__).inc()
         logger.info(
             "Published failed event to DLQ",
             extra={
