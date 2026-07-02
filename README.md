@@ -23,6 +23,14 @@ The goal of this project is to demonstrate a realistic backend architecture usin
 - `notification-service`: consumes events and sends simulated notifications
 - `ai-assistant-service`: uses AI to generate emergency plans and task proposals
 
+## Documentation
+
+- [Project specification](docs/PROJECT_SPEC.md): current architecture, service conventions, observability, event model, and roadmap for future development work.
+- [Architecture](docs/architecture.md): runtime topology, request flow, event flow, persistence, and service boundaries.
+- [Events](docs/events.md): Kafka event envelope, implemented events, planned events, logging, and metrics rules.
+- [Observability](docs/observability.md): Prometheus, Grafana, Loki, cAdvisor, Redpanda metrics, and useful queries.
+- [Architecture decisions](docs/decisions): short ADRs explaining major technical choices.
+
 ## First MVP
 
 The first functional flow will be:

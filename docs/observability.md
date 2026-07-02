@@ -18,6 +18,7 @@ docker compose -f infrastructure/docker-compose.yml up --build
 | Prometheus | http://localhost:9090 |
 | cAdvisor | http://localhost:8089 |
 | Loki | http://localhost:3100 |
+| Kafka UI | http://localhost:8085 |
 
 Grafana credentials:
 
@@ -46,6 +47,8 @@ rate(container_cpu_usage_seconds_total[1m])
 
 Prometheus scrapes cAdvisor and the service actuator metrics endpoints when available:
 
+- `prometheus:9090`
+- `redpanda:9644`
 - `cadvisor:8080`
 - `gateway-service:8080/actuator/prometheus`
 - `identity-service:8081/actuator/prometheus`
@@ -116,6 +119,31 @@ histogram_quantile(
   )
 )
 ```
+
+Redpanda broker activity:
+
+```promql
+rate(vectorized_cluster_partition_records_produced[5m])
+```
+
+```promql
+rate(vectorized_cluster_partition_records_fetched[5m])
+```
+
+```promql
+vectorized_kafka_group_offset
+```
+
+Current custom AidFlow metrics:
+
+- `aidflow_kafka_events_published_total`
+- `aidflow_kafka_events_publication_failed_total`
+- `aidflow_kafka_events_consumed_total`
+- `aidflow_kafka_events_processed_total`
+- `aidflow_kafka_events_processing_failed_total`
+- `aidflow_kafka_event_processing_duration_seconds`
+- `aidflow_notifications_sent_total`
+- `aidflow_notification_dlq_events_published_total`
 
 ## Logs With Loki
 
