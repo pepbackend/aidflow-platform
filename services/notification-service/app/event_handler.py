@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 
 from pydantic import ValidationError
 
@@ -7,11 +8,17 @@ from app.models import CampaignCreatedPayload, EventEnvelope
 logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class ProcessingResult:
+    handler: str
+    processing_result: str
+    notification_sent: bool = False
+
+
 class EventHandler:
-    def handle(self, event: EventEnvelope) -> None:
+    def handle(self, event: EventEnvelope) -> ProcessingResult:
         if event.event_type == "CampaignCreated":
-            self._handle_campaign_created(event)
-            return
+            return self._handle_campaign_created(event)
 
         logger.info(
             "Ignored event with unsupported type",
@@ -22,8 +29,12 @@ class EventHandler:
                 "aggregateId": event.aggregate_id,
             },
         )
+        return ProcessingResult(
+            handler="unsupported_event",
+            processing_result="ignored",
+        )
 
-    def _handle_campaign_created(self, event: EventEnvelope) -> None:
+    def _handle_campaign_created(self, event: EventEnvelope) -> ProcessingResult:
         try:
             payload = CampaignCreatedPayload.model_validate(event.payload)
         except ValidationError:
@@ -51,4 +62,9 @@ class EventHandler:
                 "priority": payload.priority,
                 "createdBy": payload.created_by,
             },
+        )
+        return ProcessingResult(
+            handler="CampaignCreatedNotificationHandler",
+            processing_result="notification_sent",
+            notification_sent=True,
         )

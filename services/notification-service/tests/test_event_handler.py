@@ -29,7 +29,7 @@ def test_campaign_created_event_logs_simulated_notification(caplog):
     with caplog.at_level(logging.INFO):
         EventHandler().handle(event)
 
-    assert "Simulated notification: campaign 'Flood response in Granollers'" in caplog.text
+    assert "Simulated notification sent" in caplog.text
 
 
 def test_unknown_event_type_is_ignored(caplog):
@@ -46,7 +46,7 @@ def test_unknown_event_type_is_ignored(caplog):
     with caplog.at_level(logging.INFO):
         EventHandler().handle(event)
 
-    assert "Ignored event with unsupported type: SomethingElse" in caplog.text
+    assert "Ignored event with unsupported type" in caplog.text
 
 
 def test_invalid_campaign_created_payload_raises():

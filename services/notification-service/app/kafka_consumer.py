@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 
 from aiokafka import AIOKafkaConsumer
 from pydantic import ValidationError
@@ -7,7 +8,13 @@ from pydantic import ValidationError
 from app.config import Settings
 from app.dlq_publisher import DlqPublisher
 from app.event_handler import EventHandler
-from app.metrics import KAFKA_EVENTS_FAILED, KAFKA_EVENTS_RECEIVED
+from app.metrics import (
+    KAFKA_EVENT_PROCESSING_DURATION,
+    KAFKA_EVENTS_CONSUMED,
+    KAFKA_EVENTS_PROCESSED,
+    KAFKA_EVENTS_PROCESSING_FAILED,
+    NOTIFICATIONS_SENT,
+)
 from app.models import EventEnvelope
 
 logger = logging.getLogger(__name__)
@@ -95,16 +102,15 @@ class KafkaEventConsumer:
             "topic": topic,
             "partition": partition,
             "offset": offset,
+            "consumerGroup": self._settings.kafka_consumer_group,
         }
+        event: EventEnvelope | None = None
         try:
             if value is None:
                 raise ValueError("Kafka message value is empty")
             raw_event = value.decode("utf-8")
             event = EventEnvelope.model_validate_json(raw_event)
-            KAFKA_EVENTS_RECEIVED.labels(
-                event_type=event.event_type,
-                aggregate_type=event.aggregate_type,
-            ).inc()
+            self._increment_event_counter(KAFKA_EVENTS_CONSUMED, event, topic, "success")
             logger.info(
                 "Kafka event received",
                 extra=log_context
@@ -115,20 +121,44 @@ class KafkaEventConsumer:
                     "aggregateId": event.aggregate_id,
                 },
             )
-            self._event_handler.handle(event)
+            started_at = time.perf_counter()
+            result = self._event_handler.handle(event)
+            KAFKA_EVENT_PROCESSING_DURATION.labels(
+                service=self._settings.service_name,
+                event_type=event.event_type,
+                aggregate_type=event.aggregate_type,
+                topic=topic or self._settings.kafka_topic,
+                consumer_group=self._settings.kafka_consumer_group,
+                handler=result.handler,
+            ).observe(time.perf_counter() - started_at)
+            self._increment_event_counter(KAFKA_EVENTS_PROCESSED, event, topic, "success")
+            if result.notification_sent:
+                self._increment_event_counter(NOTIFICATIONS_SENT, event, topic, "success")
+            logger.info(
+                "Kafka event processed",
+                extra=log_context
+                | {
+                    "eventId": event.event_id,
+                    "eventType": event.event_type,
+                    "aggregateType": event.aggregate_type,
+                    "aggregateId": event.aggregate_id,
+                    "handler": result.handler,
+                    "processingResult": result.processing_result,
+                },
+            )
         except (ValidationError, ValueError, TypeError) as error:
             logger.exception(
-                "Event validation failed; publishing to DLQ",
-                extra=log_context | {"errorType": error.__class__.__name__},
+                "Kafka event processing failed",
+                extra=self._failure_log_context(log_context, event, error),
             )
-            KAFKA_EVENTS_FAILED.labels(reason="validation").inc()
+            self._increment_event_counter(KAFKA_EVENTS_PROCESSING_FAILED, event, topic, "failed")
             await self._publish_to_dlq(self._raw_event(value), error)
         except Exception as error:
             logger.exception(
-                "Event handling failed; publishing to DLQ",
-                extra=log_context | {"errorType": error.__class__.__name__},
+                "Kafka event processing failed",
+                extra=self._failure_log_context(log_context, event, error),
             )
-            KAFKA_EVENTS_FAILED.labels(reason="handling").inc()
+            self._increment_event_counter(KAFKA_EVENTS_PROCESSING_FAILED, event, topic, "failed")
             await self._publish_to_dlq(self._raw_event(value), error)
 
     async def _publish_to_dlq(self, raw_event: str, error: Exception) -> None:
@@ -141,3 +171,38 @@ class KafkaEventConsumer:
         if value is None:
             return ""
         return value.decode("utf-8", errors="replace")
+
+    def _increment_event_counter(
+        self,
+        counter,
+        event: EventEnvelope | None,
+        topic: str | None,
+        status: str,
+    ) -> None:
+        counter.labels(
+            service=self._settings.service_name,
+            event_type=event.event_type if event else "unknown",
+            aggregate_type=event.aggregate_type if event else "unknown",
+            topic=topic or self._settings.kafka_topic,
+            consumer_group=self._settings.kafka_consumer_group,
+            status=status,
+        ).inc()
+
+    def _failure_log_context(
+        self,
+        log_context: dict[str, object],
+        event: EventEnvelope | None,
+        error: Exception,
+    ) -> dict[str, object]:
+        event_context = {}
+        if event is not None:
+            event_context = {
+                "eventId": event.event_id,
+                "eventType": event.event_type,
+                "aggregateType": event.aggregate_type,
+                "aggregateId": event.aggregate_id,
+            }
+        return log_context | event_context | {
+            "errorType": error.__class__.__name__,
+            "errorMessage": str(error),
+        }

@@ -4,7 +4,10 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import net.logstash.logback.argument.StructuredArguments;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -22,15 +25,18 @@ public class OutboxEventPublishingService {
 
     private final SpringDataOutboxEventRepository repository;
     private final KafkaTemplate<String, String> kafkaTemplate;
+    private final MeterRegistry meterRegistry;
     private final int batchSize;
 
     public OutboxEventPublishingService(
             SpringDataOutboxEventRepository repository,
             KafkaTemplate<String, String> kafkaTemplate,
+            MeterRegistry meterRegistry,
             @Value("${campaign.outbox.batch-size:50}") int batchSize
     ) {
         this.repository = repository;
         this.kafkaTemplate = kafkaTemplate;
+        this.meterRegistry = meterRegistry;
         this.batchSize = batchSize;
     }
 
@@ -54,32 +60,38 @@ public class OutboxEventPublishingService {
             );
 
             for (OutboxEventJpaEntity event : pendingEvents) {
+                String key = event.getAggregateId().toString();
                 try {
                     SendResult<String, String> result = kafkaTemplate
-                            .send(event.getTopic(), event.getAggregateId().toString(), event.getPayload())
+                            .send(event.getTopic(), key, event.getPayload())
                             .get();
+                    RecordMetadata metadata = result.getRecordMetadata();
                     event.markPublished(OffsetDateTime.now(ZoneOffset.UTC));
                     publishedCount++;
+                    incrementKafkaEventCounter("aidflow.kafka.events.published", event, "success");
                     log.info(
-                            "Outbox event published",
-                            StructuredArguments.keyValue("outboxEventId", event.getId()),
+                            "Kafka event published",
+                            StructuredArguments.keyValue("eventId", event.getId()),
                             StructuredArguments.keyValue("aggregateType", event.getAggregateType()),
                             StructuredArguments.keyValue("aggregateId", event.getAggregateId()),
                             StructuredArguments.keyValue("eventType", event.getEventType()),
-                            StructuredArguments.keyValue("topic", result.getRecordMetadata().topic()),
-                            StructuredArguments.keyValue("partition", result.getRecordMetadata().partition()),
-                            StructuredArguments.keyValue("offset", result.getRecordMetadata().offset())
+                            StructuredArguments.keyValue("topic", metadata.topic()),
+                            StructuredArguments.keyValue("partition", metadata.partition()),
+                            StructuredArguments.keyValue("offset", metadata.offset()),
+                            StructuredArguments.keyValue("key", key)
                     );
                 } catch (Exception exception) {
                     event.markFailed(exception.getMessage());
                     failedCount++;
-                    log.warn(
-                            "Outbox event publish failed",
-                            StructuredArguments.keyValue("outboxEventId", event.getId()),
+                    incrementKafkaEventCounter("aidflow.kafka.events.publication.failed", event, "failed");
+                    log.error(
+                            "Kafka event publication failed",
+                            StructuredArguments.keyValue("eventId", event.getId()),
                             StructuredArguments.keyValue("aggregateType", event.getAggregateType()),
                             StructuredArguments.keyValue("aggregateId", event.getAggregateId()),
                             StructuredArguments.keyValue("eventType", event.getEventType()),
                             StructuredArguments.keyValue("topic", event.getTopic()),
+                            StructuredArguments.keyValue("key", key),
                             StructuredArguments.keyValue("errorType", exception.getClass().getSimpleName()),
                             StructuredArguments.keyValue("errorMessage", exception.getMessage()),
                             exception
@@ -96,5 +108,17 @@ public class OutboxEventPublishingService {
         } finally {
             MDC.remove(MDC_TRACE_ID_KEY);
         }
+    }
+
+    private void incrementKafkaEventCounter(String metricName, OutboxEventJpaEntity event, String status) {
+        Counter.builder(metricName)
+                .description("Application-level Kafka event publication count.")
+                .tag("service", "campaign-service")
+                .tag("event_type", event.getEventType())
+                .tag("aggregate_type", event.getAggregateType())
+                .tag("topic", event.getTopic())
+                .tag("status", status)
+                .register(meterRegistry)
+                .increment();
     }
 }
