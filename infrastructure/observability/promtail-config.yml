@@ -13,22 +13,29 @@ scrape_configs:
     docker_sd_configs:
       - host: unix:///var/run/docker.sock
         refresh_interval: 5s
+
     relabel_configs:
       - target_label: job
         replacement: docker
+
       - source_labels: [__meta_docker_container_id]
         target_label: __path__
         replacement: /var/lib/docker/containers/$1/$1-json.log
+
       - source_labels: [__meta_docker_container_name]
         regex: /(.+)
         target_label: container
+
       - source_labels: [__meta_docker_container_name]
         regex: /aidflow-(.+)
         target_label: service
+
       - source_labels: [__meta_docker_container_log_stream]
         target_label: stream
+
     pipeline_stages:
       - docker: {}
+
       - match:
           selector: '{service=~"(gateway-service|identity-service|campaign-service|notification-service)"}'
           stages:
@@ -39,11 +46,23 @@ scrape_configs:
                   traceId: traceId
                   logger: logger
                   message: message
+                  eventId: eventId
+                  eventType: eventType
+                  aggregateType: aggregateType
+                  aggregateId: aggregateId
+                  campaignId: campaignId
+                  campaignName: campaignName
+                  location: location
+                  priority: priority
+                  createdBy: createdBy
+
             - labels:
                 severity:
                 logger:
+                eventType:
+                aggregateType:
+                priority:
+
             - timestamp:
                 source: timestamp
                 format: RFC3339Nano
-            - output:
-                source: message

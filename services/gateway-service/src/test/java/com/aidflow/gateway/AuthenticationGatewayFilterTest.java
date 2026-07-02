@@ -78,6 +78,9 @@ class AuthenticationGatewayFilterTest {
 
         assertThat(chain.called).isFalse();
         assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(exchange.getResponse().getHeaders().getContentType().toString()).isEqualTo("application/json");
+        assertThat(exchange.getResponse().getBodyAsString().block())
+                .isEqualTo("{\"error\":\"unauthorized\",\"message\":\"Unauthorized\"}");
     }
 
     @Test
@@ -95,6 +98,9 @@ class AuthenticationGatewayFilterTest {
 
         assertThat(chain.called).isFalse();
         assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(exchange.getResponse().getHeaders().getContentType().toString()).isEqualTo("application/json");
+        assertThat(exchange.getResponse().getBodyAsString().block())
+                .isEqualTo("{\"error\":\"unauthorized\",\"message\":\"Unauthorized\"}");
     }
 
     private static ExchangeFunction unusedExchangeFunction() {
