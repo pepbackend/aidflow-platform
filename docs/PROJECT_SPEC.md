@@ -215,6 +215,12 @@ user: aidflow
 password: aidflow
 ```
 
+Provisioned Grafana dashboards:
+
+- `AidFlow Logs Inspection`: structured log inspection dashboard for service logs, Kafka business event logs, errors, trace-id search, and logger volume. Local URL: `http://localhost:3000/d/aidflow-logs-inspection`
+- `AidFlow Containers Metrics`: cAdvisor-based dashboard for AidFlow container CPU, memory, network, filesystem IO, and container snapshots. Local URL: `http://localhost:3000/d/aidflow-containers-metrics`
+- `AidFlow Business Metrics`: Prometheus dashboard for custom AidFlow Kafka/notification metrics and Redpanda event throughput context. Local URL: `http://localhost:3000/d/aidflow-business-metrics`
+
 Prometheus scrape targets include:
 
 - `prometheus:9090`

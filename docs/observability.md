@@ -159,6 +159,81 @@ It sends logs to Loki at:
 http://loki:3100/loki/api/v1/push
 ```
 
+## Grafana Logs Dashboard
+
+Grafana provisions a dashboard named `AidFlow Logs Inspection` in the `AidFlow` folder.
+
+The dashboard is defined in:
+
+```text
+infrastructure/observability/grafana/provisioning/dashboards/aidflow-logs-inspection.json
+```
+
+It uses the `Loki` datasource and includes:
+
+- Service, severity, event type, trace id, and free-text regex filters.
+- Error count for the selected time range.
+- Kafka business event log count for the selected time range.
+- Log rate by service and severity.
+- Kafka and notification event log rate.
+- Raw structured log inspection with log details enabled.
+- Focused panels for Kafka business event logs and error logs.
+- Logger volume table to find noisy classes/modules.
+
+After starting the stack, open:
+
+```text
+http://localhost:3000/d/aidflow-logs-inspection
+```
+
+## Grafana Metrics Dashboards
+
+Grafana also provisions two Prometheus dashboards in the `AidFlow` folder.
+
+Container metrics dashboard:
+
+```text
+http://localhost:3000/d/aidflow-containers-metrics
+```
+
+Definition:
+
+```text
+infrastructure/observability/grafana/provisioning/dashboards/aidflow-containers-metrics.json
+```
+
+It uses cAdvisor metrics and includes:
+
+- AidFlow container count.
+- Total CPU, memory, and network IO.
+- CPU usage by container.
+- Memory working set by container.
+- Network receive/transmit throughput.
+- Filesystem read/write throughput.
+- Current container snapshot table.
+
+Business metrics dashboard:
+
+```text
+http://localhost:3000/d/aidflow-business-metrics
+```
+
+Definition:
+
+```text
+infrastructure/observability/grafana/provisioning/dashboards/aidflow-business-metrics.json
+```
+
+It uses custom AidFlow application metrics and Redpanda metrics, and includes:
+
+- Kafka events published, consumed, processed, and failed.
+- Kafka business event rates.
+- Notification sent rate.
+- Kafka event processing duration percentiles.
+- DLQ publish rate.
+- Redpanda records and bytes produced/fetched.
+- Business event totals table.
+
 Basic Loki query:
 
 ```logql
